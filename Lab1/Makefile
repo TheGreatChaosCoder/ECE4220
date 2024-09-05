@@ -1,4 +1,5 @@
 obj-m+=Lab1Week1.o
+obj-m+=Lab1-Week2.o
 ccflags-y := -std=gnu99 -Wno-declaration-after-statement
 
 all:
