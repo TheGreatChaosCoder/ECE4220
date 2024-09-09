@@ -1,1 +1,0 @@
-cmd_/home/pi/ece4220/Lab1/Lab1-Week2.ko := ld -r -EL -T ./scripts/module-common.lds -T ./arch/arm/kernel/module.lds  --build-id  -o /home/pi/ece4220/Lab1/Lab1-Week2.ko /home/pi/ece4220/Lab1/Lab1-Week2.o /home/pi/ece4220/Lab1/Lab1-Week2.mod.o ;  true

@@ -11,15 +11,12 @@
 #include <linux/interrupt.h>
 #include <linux/err.h>
 
-
-
-
 MODULE_LICENSE("GPL");
 
-const int BLUE_LED_GPIO = 29;
-const int GREEN_LED_GPIO = 7;
-const int RED_LED_GPIO = 3;
-const int YELLOW_LED_GPIO = 5;
+const int BLUE_LED_GPIO = 5;
+const int GREEN_LED_GPIO = 4;
+const int RED_LED_GPIO = 2;
+const int YELLOW_LED_GPIO = 3;
 
 static int __init led_blink_init(void) {
     printk(KERN_INFO "Module installed! -- New style\n");
