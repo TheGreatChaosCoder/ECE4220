@@ -37,8 +37,6 @@ int main(void)
         exit(1);
     }
 
-    printf("cdev_id = %i\n", cdev_id);
-
     while(1)
     {
         // Reading from the character device
@@ -47,11 +45,6 @@ int main(void)
             printf("Read failed, leaving...\n");
             break;
         }
-
-        // Null-terminate the buffer to safely print it as a string
-        buffer[bytes_read] = '\0';
-
-        //printf("Bytes Read = %i, Read from device: %s\n", bytes_read, buffer);
 
         // Turn on LEDS
         ctrl = buffer[0];

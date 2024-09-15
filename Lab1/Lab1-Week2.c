@@ -23,11 +23,6 @@ const int RED_BUTTON_GPIO = 16;
 const int YELLOW_BUTTON_GPIO = 17;
 const int RESET_BUTTON_GPIO = 20;
 
-int GPIO_irqNumber;
-
-// Interrupt handler function. Tha name "button_isr" can be different.
-// You may use printk statements for debugging purposes.
-
 static char msg[40];
 static int major;
 
@@ -37,11 +32,6 @@ static ssize_t device_read(struct file *filp, char __user *buffer, size_t length
 	ssize_t dummy = copy_to_user(buffer, msg, length); // dummy will be 0 if successful
 	printk(KERN_INFO "Here %i\n", buffer[0]);
 
-	// msg should be protected (e.g. semaphore). Not implemented here, but you can add it.
-	//msg[0] = '\0'; // "Clear" the message, in case the device is read again.
-
-	// This way, the same message will not be read twice.
-	// Also convenient for checking if there is nothing new, in user space.
 	return length;
 }
 
@@ -76,7 +66,6 @@ static irqreturn_t gpio_irq_handler(int irq,void *dev_id)
 }
 
 
-
 /*
 ** Module Init function
 */
@@ -90,8 +79,6 @@ int init_module()   // Call the default name
 	}
 	printk("Lab1_cdev_kmod example, assigned major: %d\n", major);
 	printk("Create Char Device (node) with: sudo mknod /dev/%s c %d 0\n", CDEV_NAME, major);
-
-	// Configure the output and the input pins
 
 	// Verify pins
 	if(!gpio_is_valid(BLUE_BUTTON_GPIO) || !gpio_is_valid(GREEN_BUTTON_GPIO) ||
@@ -153,11 +140,6 @@ int init_module()   // Call the default name
 */
 void cleanup_module()
 {
-
-	// ------
-	// Remove the interrupt handler; you need to provide the same identifier
-	free_irq(GPIO_irqNumber,NULL);
-
 	// Free the Pins
 	gpio_free(BLUE_BUTTON_GPIO);
 	gpio_free(RED_BUTTON_GPIO);
