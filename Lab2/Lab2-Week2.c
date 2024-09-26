@@ -85,12 +85,8 @@ void *getFirstThd(void *ptr){
 	//}
 	while(fgets(commonBuff, sizeof(commonBuff)*256, file))
 	{
-		printf("Thread 1: %s\n", commonBuff);
 		wait_rest_of_period(&time_info);
 	}
-
-
-	commonBuff = "Done";
 
 	//Exit pthread
 	fclose(file);
@@ -139,12 +135,10 @@ void *getSecThd(void *ptr)
 	//}
 	while(fgets(commonBuff, sizeof(commonBuff)*256, file))
 	{
-		printf("Thread 2: %s\n", commonBuff);
 		wait_rest_of_period(&time_info);
 	}
 
 	fclose(file);
-	commonBuff = "Done";
 
 	//Exit pthread
 	pthread_exit(NULL);
@@ -175,18 +169,17 @@ void *getThirdThd(void *ptr)
 	periodic_task_init(&time_info, taskPeriod_ns);
 
 	while(lineCount < 20 || (done1 && done2)){
-		printf("Thread 3: On line %i\n", lineCount+1);
 		done1 = (buffers->sBuffer1 == "Done");
 		if(!done1){
 			strcpy(fullString[lineCount], buffers->sBuffer1);
-			printf("Thread 3: Line %i -> %s\n", lineCount+1, fullString[lineCount]);
+			//printf("Thread 3: Line %i -> %s\n", lineCount+1, fullString[lineCount]);
 			lineCount++;
 		}
 
 		done2 = (buffers->sBuffer2 == "Done");
 		if(!done2){
 			strcpy(fullString[lineCount], buffers->sBuffer2);
-			printf("Thread 3: Line %i -> %s\n", lineCount+1, fullString[lineCount]);
+			//printf("Thread 3: Line %i -> %s\n", lineCount+1, fullString[lineCount]);
 			lineCount++;
 		}
 

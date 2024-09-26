@@ -21,6 +21,7 @@ typedef struct MatrixConvInfo {
     int filtered_cols;
     int * filter;
     int * matrix;
+    int * result_matrix;
 } MatrixConvInfo;
 
 typedef struct MatrixConvRowInfo {
@@ -42,7 +43,7 @@ int ConvolutionOnElement(MatrixConvInfo * m, const int row, const int col){
             
             if((row+i)>=0 && (row+i)<m->rows && (col+j)>=0 && (col+j)<m->cols){
                 index = (i+m->filtered_rows/2)*m->filtered_cols + j+m->filtered_cols/2;
-                sum += (*(m->filter + index)) * (*(m->matrix + (row+i)*m->cols + col + j));
+                sum += m->filter[index] * m->matrix[(row+i)*m->cols + col + j];
             }
 
         }
@@ -53,40 +54,40 @@ int ConvolutionOnElement(MatrixConvInfo * m, const int row, const int col){
 
 void * ConvolutionPerElement(void * info){
     MatrixConvElementInfo * m = (MatrixConvElementInfo *) (info);
-    int * filtered_element = malloc(sizeof(int));
+    int * r_matrix = m->matrix->result_matrix;
 
-    *(filtered_element) = ConvolutionOnElement(m->matrix, m->row, m->col);
+    r_matrix[m->row*m->matrix->cols+m->col] = ConvolutionOnElement(m->matrix, m->row, m->col);
 
-    pthread_exit(filtered_element);
+    pthread_exit(NULL);
 }
 
 // 1. Single thread to evaluate the convolution 
 void * ConvolutionPerMatrix(void *info){
     MatrixConvInfo * matrix = (MatrixConvInfo *) info;
-    int * filtered_matrix = malloc(sizeof(int) * matrix->rows * matrix->cols);
+    int * r_matrix = matrix->result_matrix;
     unsigned i,j;
 
     for(i=0; i<matrix->rows; i++){
         for(j=0; j<matrix->cols; j++){
-            *(filtered_matrix + i*matrix->cols + j) = ConvolutionOnElement(matrix, i, j);
+            r_matrix[i*matrix->cols + j] = ConvolutionOnElement(matrix, i, j);
         }
     }
 
-	pthread_exit(filtered_matrix);
+	pthread_exit(NULL);
 }
 
 
 // 2. Thread function to process one row of the given matrix
 void * ConvolutionPerRow(void *info){
     MatrixConvRowInfo * m = (MatrixConvRowInfo *) (info);
-    int * filtered_row = malloc(sizeof(int) * m->matrix->cols);
+    int * r_matrix = m->matrix->result_matrix;
     unsigned i;
 
     for(i=0; i<m->matrix->cols; i++){
-        filtered_row[i] = ConvolutionOnElement(m->matrix, m->row, i);
+        r_matrix[m->row*m->matrix->cols+i] = ConvolutionOnElement(m->matrix, m->row, i);
     }
 
-    pthread_exit(filtered_row);
+    pthread_exit(NULL);
 }
 
 // 3. Thread to process each element of the matrix.
@@ -141,6 +142,9 @@ MatrixConvInfo * readFile(char * fileName){
 
     fclose(file);
 
+    // Allocate for resultant matrix
+    info->result_matrix = malloc(sizeof(int) * info->rows * info->cols);
+
     return info;
 }
 
@@ -151,7 +155,7 @@ void print_matrix(int *arr, int numRows, int numCols){
     printf("\n");
     for(int i = 0; i < numRows; i++){
         for(int j = 0; j < numCols; j++){
-            printf("%3d ", *(arr + i*numCols + j));
+            printf("%3d ", arr[i*numCols + j]);
         }
         printf("\n");
     }
@@ -165,13 +169,12 @@ int main(int argc, char *argv[]) {
     // Define variables
     clock_t start, end;
     MatrixConvInfo *matrix;
-    int * filtered_matrix;
     int i,j;
 
 	// Step-1
     // ======
     // Read the file and load the data matrix and filter vector information
-    matrix = readFile("2x5.txt");
+    matrix = readFile("2x10.txt");
 
     if(matrix == NULL){
         return 0;
@@ -195,13 +198,13 @@ int main(int argc, char *argv[]) {
     pthread_t thread;
     pthread_create(&thread, NULL, &ConvolutionPerMatrix, matrix);
     // Use pthread_join the join the threads
-    pthread_join(thread, (void **)&filtered_matrix);
+    pthread_join(thread, NULL);
 	// End timing
     end = clock();
 
 	// Print out search count with 1 thread and the time it took
     printf("Resultant filtered matrix:\n");
-    print_matrix(filtered_matrix, matrix->rows, matrix->cols);
+    print_matrix(matrix->result_matrix, matrix->rows, matrix->cols);
     printf("Time to compute on a single thread: %f sec\n", (double) (end-start) / CLOCKS_PER_SEC);
 
 	// Step-3
@@ -213,7 +216,6 @@ int main(int argc, char *argv[]) {
     start = clock();
 
     //Create threads 
-    int * filtered_row[matrix->rows];
     pthread_t threads[matrix->rows];
     MatrixConvRowInfo rInfo[matrix->rows];
 
@@ -225,10 +227,7 @@ int main(int argc, char *argv[]) {
     
     // Use pthread_join the join the threads
     for(i = 0; i<matrix->rows; i++){
-        pthread_join(threads[i], (void **)&(filtered_row[i]));
-        for(j = 0; j<matrix->cols; j++){
-            *(filtered_matrix + i*matrix->cols + j) = filtered_row[i][j];
-        }
+        pthread_join(threads[i], NULL);
     }
 
 	// End timing
@@ -236,7 +235,7 @@ int main(int argc, char *argv[]) {
 
 	// Print out search count with 1 thread and the time it took
     printf("Resultant filtered matrix:\n");
-    print_matrix(filtered_matrix, matrix->rows, matrix->cols);
+    print_matrix(matrix->result_matrix, matrix->rows, matrix->cols);
     printf("Time to compute on a thread per row: %f sec\n", (double) (end-start) / CLOCKS_PER_SEC);
 
     // Step-4
@@ -248,7 +247,6 @@ int main(int argc, char *argv[]) {
     start = clock();
 
     //Create threads 
-    int * filtered_elements[matrix->rows][matrix->cols];
     pthread_t moreThreads[matrix->rows][matrix->cols];
     MatrixConvElementInfo eInfo[matrix->rows][matrix->cols];
 
@@ -264,8 +262,7 @@ int main(int argc, char *argv[]) {
     // Use pthread_join the join the threads
     for(i = 0; i<matrix->rows; i++){
         for(j = 0; j<matrix->cols; j++){
-            pthread_join(moreThreads[i][j], (void **)&(filtered_elements[i][j]));
-            *(filtered_matrix + i*matrix->cols + j) = *(filtered_elements[i][j]);
+            pthread_join(moreThreads[i][j], NULL);
         }
     }
 
@@ -274,22 +271,14 @@ int main(int argc, char *argv[]) {
 
 	// Print out search count with 1 thread and the time it took
     printf("Resultant filtered matrix:\n");
-    print_matrix(filtered_matrix, matrix->rows, matrix->cols);
+    print_matrix(matrix->result_matrix, matrix->rows, matrix->cols);
     printf("Time to compute on a thread per row: %f sec\n", (double) (end-start) / CLOCKS_PER_SEC);
 
     // Free Everything
-    free(filtered_matrix);
-
     free(matrix->matrix);
     free(matrix->filter);
+    free(matrix->result_matrix);
     free(matrix);
-
-    for(i = 0; i<matrix->rows; i++){
-        free(filtered_row[i]);
-        for(j = 0; j<matrix->cols; j++){
-            free(filtered_elements[i][j]);
-        }
-    }
 
     return 0;
 }
