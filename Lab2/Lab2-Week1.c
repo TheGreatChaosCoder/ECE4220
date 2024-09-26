@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
 	// Step-1
     // ======
     // Read the file and load the data matrix and filter vector information
-    matrix = readFile("2x10.txt");
+    matrix = readFile("20x10.txt");
 
     if(matrix == NULL){
         return 0;

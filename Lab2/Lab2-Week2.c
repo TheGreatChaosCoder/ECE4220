@@ -20,7 +20,9 @@ void print_results();
 
 //Define global variables
 char fullString[20][256];
-const long taskPeriod_ns = 1000000000; 
+const long taskPeriod_ns = 1000000/2; 
+const long taskPeriod1_ns = 1000000/3;
+const long taskPeriod2_ns = 1000000/3;
 
 struct Buffers {
     char *sBuffer1;        
@@ -78,7 +80,7 @@ void *getFirstThd(void *ptr){
 
 	// Initialize the periodic Task and read line at a time from "First.txt"
 	struct period_info time_info;
-	periodic_task_init(&time_info, taskPeriod_ns);
+	periodic_task_init(&time_info, taskPeriod1_ns);
 	
 	//Loop{
 	//Read a line then wait_rest_of_period
@@ -128,7 +130,7 @@ void *getSecThd(void *ptr)
 
 	// Initialize the periodic Task
 	struct period_info time_info;
-	periodic_task_init(&time_info, taskPeriod_ns);
+	periodic_task_init(&time_info, taskPeriod2_ns);
 	
 	//Loop{
 	//Read a line then wait_rest_of_period
