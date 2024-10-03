@@ -20,9 +20,9 @@ void print_results();
 
 //Define global variables
 char fullString[20][256];
-const long taskPeriod_ns = 1000000/2; 
 const long taskPeriod1_ns = 1000000/3;
 const long taskPeriod2_ns = 1000000/3;
+const long taskPeriod3_ns = 1000000/2; 
 
 struct Buffers {
     char *sBuffer1;        
@@ -63,10 +63,8 @@ void *getFirstThd(void *ptr){
 		perror("sched_setscheduler failed, thread 2");
     	exit(20);
     }
-	
 
 	printf("Scheduled thread 1...\n");
-
         
     //Open File
 	FILE * file = fopen("first.txt", "r");
@@ -77,14 +75,11 @@ void *getFirstThd(void *ptr){
 		exit(20);
     }
         
-
 	// Initialize the periodic Task and read line at a time from "First.txt"
 	struct period_info time_info;
 	periodic_task_init(&time_info, taskPeriod1_ns);
 	
-	//Loop{
-	//Read a line then wait_rest_of_period
-	//}
+
 	while(fgets(commonBuff, sizeof(commonBuff)*256, file))
 	{
 		wait_rest_of_period(&time_info);
@@ -116,7 +111,6 @@ void *getSecThd(void *ptr)
     }
 
 	printf("Scheduled thread 2...\n");
-
         
     //Open File
 	FILE * file = fopen("second.txt", "r");
@@ -141,8 +135,6 @@ void *getSecThd(void *ptr)
 	}
 
 	fclose(file);
-
-	//Exit pthread
 	pthread_exit(NULL);
 }
 
@@ -168,26 +160,17 @@ void *getThirdThd(void *ptr)
 	printf("Scheduled thread 3...\n");
 
 	struct period_info time_info;
-	periodic_task_init(&time_info, taskPeriod_ns);
+	periodic_task_init(&time_info, taskPeriod3_ns);
 
-	while(lineCount < 20 || (done1 && done2)){
-		done1 = (buffers->sBuffer1 == "Done");
-		if(!done1){
-			strcpy(fullString[lineCount], buffers->sBuffer1);
-			//printf("Thread 3: Line %i -> %s\n", lineCount+1, fullString[lineCount]);
-			lineCount++;
-		}
-
-		done2 = (buffers->sBuffer2 == "Done");
-		if(!done2){
-			strcpy(fullString[lineCount], buffers->sBuffer2);
-			//printf("Thread 3: Line %i -> %s\n", lineCount+1, fullString[lineCount]);
-			lineCount++;
-		}
+	while(lineCount < 20){
+		strcpy(fullString[lineCount], buffers->sBuffer1);
+		lineCount++;
+		strcpy(fullString[lineCount], buffers->sBuffer2);
+		lineCount++;
 
 		wait_rest_of_period(&time_info);
 	}
-
+	
 	pthread_exit(NULL);
 
 }

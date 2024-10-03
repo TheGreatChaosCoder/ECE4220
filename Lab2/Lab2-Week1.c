@@ -10,10 +10,6 @@
 #include <semaphore.h>
 #include <errno.h>
 
-
-//Declare Variables to store the given matrix and final results
-
-//Declare structure to hold the convolution info (Like number of rows/cols)
 typedef struct MatrixConvInfo {
     int rows;
     int cols;
@@ -166,7 +162,6 @@ void print_matrix(int *arr, int numRows, int numCols){
 int main(int argc, char *argv[]) {
     printf("Starting Week 1 Program...\n\n");
 
-    // Define variables
     clock_t start, end;
     MatrixConvInfo *matrix;
     int i,j;
@@ -182,7 +177,6 @@ int main(int argc, char *argv[]) {
 
     // Print the original matrix
     print_matrix(matrix->matrix, matrix->rows, matrix->cols);
-    
     // Print the filter matrix
     print_matrix(matrix->filter, matrix->filtered_rows, matrix->filtered_cols);
 
@@ -192,17 +186,12 @@ int main(int argc, char *argv[]) {
     // Convolve using a single thread.
     printf("\n\n**Case 1: Convolution using single thread**\n");
 
-	// Start Timing
     start = clock();
-    // Use pthread_create function to create pthreads
     pthread_t thread;
     pthread_create(&thread, NULL, &ConvolutionPerMatrix, matrix);
-    // Use pthread_join the join the threads
     pthread_join(thread, NULL);
-	// End timing
     end = clock();
 
-	// Print out search count with 1 thread and the time it took
     printf("Resultant filtered matrix:\n");
     print_matrix(matrix->result_matrix, matrix->rows, matrix->cols);
     printf("Time to compute on a single thread: %f sec\n", (double) (end-start) / CLOCKS_PER_SEC);
@@ -212,10 +201,8 @@ int main(int argc, char *argv[]) {
     // Convolution using 1 thread per row
     printf("\n\n**Case 2: Convolution using single thread per row**\n");
     
-    // Start Timing
     start = clock();
 
-    //Create threads 
     pthread_t threads[matrix->rows];
     MatrixConvRowInfo rInfo[matrix->rows];
 
@@ -225,15 +212,12 @@ int main(int argc, char *argv[]) {
         pthread_create(&threads[i], NULL, &ConvolutionPerRow, &rInfo[i]);
     }
     
-    // Use pthread_join the join the threads
     for(i = 0; i<matrix->rows; i++){
         pthread_join(threads[i], NULL);
     }
 
-	// End timing
     end = clock();
 
-	// Print out search count with 1 thread and the time it took
     printf("Resultant filtered matrix:\n");
     print_matrix(matrix->result_matrix, matrix->rows, matrix->cols);
     printf("Time to compute on a thread per row: %f sec\n", (double) (end-start) / CLOCKS_PER_SEC);
@@ -243,10 +227,8 @@ int main(int argc, char *argv[]) {
     // Convolution with 1 thread per element
     printf("\n\n**Case 3: Convolution with 1 thread per element**\n");
 
-    // Start Timing
     start = clock();
 
-    //Create threads 
     pthread_t moreThreads[matrix->rows][matrix->cols];
     MatrixConvElementInfo eInfo[matrix->rows][matrix->cols];
 
@@ -259,17 +241,14 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    // Use pthread_join the join the threads
     for(i = 0; i<matrix->rows; i++){
         for(j = 0; j<matrix->cols; j++){
             pthread_join(moreThreads[i][j], NULL);
         }
     }
 
-	// End timing
     end = clock();
 
-	// Print out search count with 1 thread and the time it took
     printf("Resultant filtered matrix:\n");
     print_matrix(matrix->result_matrix, matrix->rows, matrix->cols);
     printf("Time to compute on a thread per row: %f sec\n", (double) (end-start) / CLOCKS_PER_SEC);
