@@ -3,10 +3,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <wiringPi.h>
+#include <pthread.h>
 
 const int GREEN_LED_GPIO = 4;
 const int RED_LED_GPIO = 2;
 const int YELLOW_LED_GPIO = 3;
+const int BLUE_LED_GPIO = 5;
 const int WALK_BUTTON_GPIO = 16;
 
 int main(void)
@@ -17,9 +19,13 @@ int main(void)
     pinMode(RED_LED_GPIO, OUTPUT);
     pinMode(GREEN_LED_GPIO, OUTPUT);
     pinMode(YELLOW_LED_GPIO, OUTPUT);
+    pinMode(BLUE_LED_GPIO, OUTPUT);
 
     pinMode(WALK_BUTTON_GPIO, INPUT);
     pullUpDnControl(WALK_BUTTON_GPIO, PUD_DOWN);
+
+    // Force Blue LED Off
+    digitalWrite(BLUE_LED_GPIO, LOW);
 
     // Polled Scheudling
     unsigned int state = 0;
