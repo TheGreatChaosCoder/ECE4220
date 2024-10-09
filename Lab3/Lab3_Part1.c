@@ -31,6 +31,14 @@ int main(void)
     unsigned int state = 0;
     while(1)
     {
+        if(digitalRead(WALK_BUTTON_GPIO) == HIGH){
+            digitalWrite(GREEN_LED_GPIO, LOW);
+            digitalWrite(YELLOW_LED_GPIO, LOW);
+            digitalWrite(RED_LED_GPIO, HIGH);
+
+            sleep(2);
+        }
+        
         if(state == 0){
             digitalWrite(GREEN_LED_GPIO, HIGH);
             digitalWrite(YELLOW_LED_GPIO, LOW);
@@ -46,14 +54,6 @@ int main(void)
             state = 0;
 
             sleep(1);
-        }
-
-        if(digitalRead(WALK_BUTTON_GPIO) == HIGH){
-            digitalWrite(GREEN_LED_GPIO, LOW);
-            digitalWrite(YELLOW_LED_GPIO, LOW);
-            digitalWrite(RED_LED_GPIO, HIGH);
-
-            sleep(2);
         }
     }
 
