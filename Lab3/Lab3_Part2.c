@@ -98,7 +98,7 @@ int main(void)
     // Priority Scheudling
     pthread_t gThrd, yThrd, wThrd;
     pthread_attr_t gAttr, yAttr, wAttr;
-    sched_param gParam, yParam, wParam;
+    struct sched_param gParam, yParam, wParam;
 
     // Initialize Semaphore
     sem_init(&lights_mutex, 0, 1); 
