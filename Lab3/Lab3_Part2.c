@@ -98,6 +98,7 @@ int main(void)
     // Priority Scheudling
     pthread_t gThrd, yThrd, wThrd;
     pthread_attr_t gAttr, yAttr, wAttr;
+    sched_param gParam, yParam, wParam;
 
     // Initialize Semaphore
     sem_init(&lights_mutex, 0, 1); 
@@ -107,10 +108,19 @@ int main(void)
     pthread_attr_init(&yAttr);
     pthread_attr_init(&wAttr);
 
-    // Set Thread Priorities
-    pthread_attr_getschedpolicy(&gAttr, &PTL1);
-    pthread_attr_getschedpolicy(&yAttr, &PTL2);
-    pthread_attr_getschedpolicy(&wAttr, &PPL);
+    // Set Scheduling Policy
+    pthread_attr_setschedpolicy(&gAttr, SCHED_FIFO);
+    pthread_attr_setschedpolicy(&yAttr, SCHED_FIFO);
+    pthread_attr_setschedpolicy(&wAttr, SCHED_FIFO);
+
+    // Set Priority
+    gParam.sched_priority = 20;
+    yParam.sched_priority = 20;
+    wParam.sched_priority = 20;
+
+    pthread_attr_setschedparam(&gAttr, &gParam);
+    pthread_attr_setschedparam(&yAttr, &yParam);
+    pthread_attr_setschedparam(&wAttr, &wParam);
 
     // Create Threads
     pthread_create(&gThrd, &gAttr, &greenSideLight, NULL);
