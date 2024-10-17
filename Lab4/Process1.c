@@ -16,51 +16,77 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#define MAX 1000
+#define MAX_CHILD_THREADS 15
+
+typedef struct{
+	long buttonTS;
+	long prevLoc, nextLoc;
+	long long prevTS, nextTS;
+	long double y0;
+} InterpResults;
+
 struct timeval tv;
 
-#define MAX 1000
-#define MAX_CHILD_THREADS 10
 char location[MAX];
 long long timestamp;
 long buffer[1];
 long long time_buffer[1];
+int displayFd[2];
 
 pthread_t childThreads[MAX_CHILD_THREADS];
-sem_t mySem;
+sem_t locationTimeSem;
 
-long prevLoc=0, prevTS=0;
-long nextLoc=0, nextTS = 0;
+long prevLoc=0, nextLoc=0;
+long double prevTS=0, nextTS = 0;
 long buttonTS = 0;
 
 
 void* Thread0(void*);
+void* Thread1(void*);
 void* Child_Thread(void*);
 
 
 int main(void){
 	
+	// Create pipe for display
+	if(-1 == pipe(displayFd)){
+		printf("Display pipe is not created, exiting...\n");
+		return 1;
+	}
+
+	// Read from Named Pipe
 	int pfd = open("/tmp/N_pipe1", O_RDONLY);
 
-	pthread_t thread0;
+	// Set up threads
+	pthread_t thread0, thread1;
 
 	pthread_create(&thread0, NULL, &Thread0, NULL);
+	pthread_create(&thread1, NULL, &Thread1, NULL);
+
+	// Set up semaphores
+    sem_init(&locationTimeSem, 0, 1); 
 	
 	while (1) {
 
 		// Read from N_Pipe1 and store the values in buffer sizeof(char)
-		if(read(pfd, buffer, sizeof(char)) > -1){
-			//Get Locaton
-			prevLoc = nextLoc;
-			nextLoc = *((char *) buffer);
-			printf("Location: %i, ", location[0]);
-
+		if(read(pfd, location, sizeof(char)) > -1){
 			//Get Time
 			gettimeofday(&tv, NULL);
 
-			prevTS = nextTS;
-			nextTS = tv.tv_sec/1000.0+tv.tv_usec*1000.0;
+			while (tv.tv_usec >= 1000000) {
+				/* timespec sec overflow */
+				tv.tv_sec++;
+				tv.tv_usec -= 1000000;
+			}
 
-			printf("Timestamp: %ld\n", nextTS);
+			// Set all variables
+			sem_wait(&locationTimeSem);
+			prevLoc = nextLoc;
+			nextLoc = *((char *) location);
+			prevTS = timestamp;
+			timestamp = tv.tv_sec*1000+tv.tv_usec/1000.0;
+			sem_post(&locationTimeSem);
 		}
 		
 	}
@@ -83,6 +109,7 @@ void* Thread0(void* ptr) {
 		// Implement a ring "buffer" to generate new threads
 		if(read(pfd, time_buffer, sizeof(long)) > -1){
 			buttonTS = *((long *) time_buffer);
+			printf("Button Timestamp\n: %ld\n", buttonTS);
 
 			pthread_create(childThreads + idx, NULL, &Child_Thread, NULL);
 			
@@ -98,6 +125,28 @@ void* Thread0(void* ptr) {
 	pthread_exit(NULL);
 }
 
+void* Thread1(void* ptr){
+	InterpResults results;
+
+	while(1){
+		if(read(displayFd[0], &results, sizeof(results)) > -1){
+			printf("\nInterpolation Results\n");
+			printf("\n---------------------\n");
+			printf("GPS Previous TS = %lf \t GPS Previous Location = %lf\n", \
+				(long double)results.prevTS, (long double)results.prevLoc);
+			printf("Button TS = %lf \t Button Location = %lf\n", \
+				(long double)results.buttonTS, (long double)results.y0);
+			printf("GPS Next TS = %lf \t GPS Next Location = %lf\n", \
+				(long double)results.nextTS, (long double)results.nextLoc);
+			printf("\n\n");
+		}
+
+	}
+
+	pthread_exit(NULL);
+	return 0;
+}
+
 /**	@brief
  * 	This function is going to interpolate the the position of the button press
  * 	event based on the previous and next GPS time and location information. It
@@ -105,36 +154,33 @@ void* Thread0(void* ptr) {
  */
 void* Child_Thread(void* ptr){
 
+	InterpResults results;
 
-	nextLoc = (long)location[0];
-	nextTS 	= (long)timestamp;
+	nextLoc = (long) location[0];
+	nextTS 	= timestamp;
 
 
 	// interpolate the location of the button press event based on the info
 	// received through all the threads.
+	sem_wait(&locationTimeSem);
 	long double deltaLoc 	= (long double)(nextLoc - prevLoc);
 	long double deltaTS		= (long double)(nextTS - prevTS);
 	long double slope 		= (long double)(deltaLoc/deltaTS);
-	long double tmp 		= ((long double)slope)*((long double)(buttonTS - prevTS));
+	long double tmp 		= ((long double)slope) *((long double)(buttonTS - prevTS));
 	long double y0 			= (long double)tmp + (long double)prevLoc;
+	sem_post(&locationTimeSem);
 
-	// Now print the information on the screen. We need to be careful in printing
-	// the data. As we have 5 threads running concurrently and all of the them 
-	// are trying to print on the screen at the same time, we need to restrict
-	// the access so that while only one thread printing the info on the screen
-	// the rest of the threads will wait for it to finish its printing job. We
-	// need a semaphore for that.
+	// Fill in data structure to send through pipe
+	results.nextLoc = nextLoc;
+	results.prevLoc = prevLoc;
+	results.nextTS = nextTS;
+	results.prevTS = prevTS;
+	results.buttonTS = buttonTS;
+	results.y0 = y0;
 
-	printf("\nInterpolation Results\n");
-	printf("\n---------------------\n");
-	printf("GPS Previous TS = %lf \t GPS Previous Location = %lf \n", \
-			(long double)prevTS, (long double)prevLoc);
-	printf("Button TS = %lf \t Button Location = %lf\n", \
-			(long double)buttonTS, (long double)y0);
-	printf("GPS Next TS = %lf \t GPS Next Location = %lf\n", \
-			(long double)nextTS, (long double)nextLoc);
-	printf("\n\n");
-
+	// Send through pipe
+	write(displayFd[1], &results, sizeof(results));
 
 	pthread_exit(NULL);
+	return 0;
 }
