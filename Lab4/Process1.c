@@ -22,7 +22,7 @@
 typedef struct{
 	long buttonTS;
 	long prevLoc, nextLoc;
-	long long prevTS, nextTS;
+	long prevTS, nextTS;
 	long double y0;
 } InterpResults;
 
@@ -38,7 +38,7 @@ pthread_t childThreads[MAX_CHILD_THREADS];
 sem_t locationTimeSem;
 
 long prevLoc=0, nextLoc=0;
-long double prevTS=0, nextTS = 0;
+long prevTS=0, nextTS = 0;
 long buttonTS = 0;
 
 
