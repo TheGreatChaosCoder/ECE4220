@@ -26,7 +26,7 @@ typedef struct{
 	long double y0;
 } InterpResults;
 
-struct timeval tv;
+struct timespec tv;
 
 char location[MAX];
 long long timestamp;
@@ -35,10 +35,10 @@ long long time_buffer[1];
 int displayFd[2];
 
 pthread_t childThreads[MAX_CHILD_THREADS];
-sem_t locationTimeSem;
+sem_t locationTimeSem, buttonTSSem;
 
 long prevLoc=0, nextLoc=0;
-long prevTS=0, nextTS = 0;
+long long prevTS=0, nextTS = 0;
 long buttonTS = 0;
 
 
@@ -66,26 +66,21 @@ int main(void){
 
 	// Set up semaphores
     sem_init(&locationTimeSem, 0, 1); 
+	sem_init(&buttonTSSem, 0, 1); 
 	
 	while (1) {
 
 		// Read from N_Pipe1 and store the values in buffer sizeof(char)
 		if(read(pfd, location, sizeof(char)) > -1){
+			sem_wait(&locationTimeSem);
 			//Get Time
-			gettimeofday(&tv, NULL);
-
-			while (tv.tv_usec >= 1000000) {
-				/* timespec sec overflow */
-				tv.tv_sec++;
-				tv.tv_usec -= 1000000;
-			}
+			clock_gettime(CLOCK_MONOTONIC, &tv);
 
 			// Set all variables
-			sem_wait(&locationTimeSem);
 			prevLoc = nextLoc;
 			nextLoc = *((char *) location);
 			prevTS = timestamp;
-			timestamp = tv.tv_sec*1000+tv.tv_usec/1000.0;
+			timestamp = tv.tv_sec*1000.0+tv.tv_nsec/1000000.0;
 			sem_post(&locationTimeSem);
 		}
 		
@@ -107,9 +102,11 @@ void* Thread0(void* ptr) {
 	while(1){
 		
 		// Implement a ring "buffer" to generate new threads
-		if(read(pfd, time_buffer, sizeof(long)) > -1){
-			buttonTS = *((long *) time_buffer);
-			printf("Button Timestamp\n: %ld\n", buttonTS);
+		if(read(pfd, time_buffer, sizeof(long long)) > -1){
+
+			// Hold semaphore here, release it in the thread
+			sem_wait(&buttonTSSem);
+			buttonTS = *(time_buffer);
 
 			pthread_create(childThreads + idx, NULL, &Child_Thread, NULL);
 			
@@ -155,28 +152,33 @@ void* Thread1(void* ptr){
 void* Child_Thread(void* ptr){
 
 	InterpResults results;
+	long long buttonTS_tmp;
 
-	nextLoc = (long) location[0];
-	nextTS 	= timestamp;
-
+	// Hold in parent thread, release semaphore here
+	buttonTS_tmp = buttonTS;
+	sem_post(&buttonTSSem);
 
 	// interpolate the location of the button press event based on the info
 	// received through all the threads.
 	sem_wait(&locationTimeSem);
+
+	nextLoc = (long) location[0];
+	nextTS 	= timestamp;
 	long double deltaLoc 	= (long double)(nextLoc - prevLoc);
 	long double deltaTS		= (long double)(nextTS - prevTS);
 	long double slope 		= (long double)(deltaLoc/deltaTS);
-	long double tmp 		= ((long double)slope) *((long double)(buttonTS - prevTS));
+	long double tmp 		= ((long double)slope) *((long double)(buttonTS_tmp - prevTS));
 	long double y0 			= (long double)tmp + (long double)prevLoc;
-	sem_post(&locationTimeSem);
 
 	// Fill in data structure to send through pipe
 	results.nextLoc = nextLoc;
 	results.prevLoc = prevLoc;
 	results.nextTS = nextTS;
 	results.prevTS = prevTS;
-	results.buttonTS = buttonTS;
+	results.buttonTS = buttonTS_tmp;
 	results.y0 = y0;
+
+	sem_post(&locationTimeSem);
 
 	// Send through pipe
 	write(displayFd[1], &results, sizeof(results));

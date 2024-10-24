@@ -28,9 +28,9 @@ static void wait_rest_of_period(struct period_info *pinfo);
 int main(void)
 {
     int pfd;
-    struct timeval tv;
+    struct timespec tv;
     struct period_info time_info;
-    long time_buffer[1];
+    long long time_buffer[1];
 
     // Set up pipe
     if( -1 == mkfifo("/tmp/N_pipe2", 0666)){
@@ -58,11 +58,9 @@ int main(void)
     while(1)
 	{
         if(digitalRead(BUTTON_GPIO) == HIGH){
-			gettimeofday(&tv, NULL);
-            time_buffer[0] = tv.tv_sec*1000.0+tv.tv_usec/1000.0;
-            printf("Button Pressed\n");
-
-            write(pfd, time_buffer, sizeof(long));
+            clock_gettime(CLOCK_MONOTONIC, &tv);
+            time_buffer[0] = tv.tv_sec*1000.0+tv.tv_nsec/1000000.0;
+            write(pfd, time_buffer, sizeof(time_buffer[0]));
         }
 
 		wait_rest_of_period(&time_info);
