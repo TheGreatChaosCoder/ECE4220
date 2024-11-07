@@ -10,9 +10,12 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <net/if.h>
 #include <arpa/inet.h>
+
 
 #define MSG_SIZE 40			// message size
 
@@ -29,6 +32,8 @@ int main(int argc, char *argv[])
    struct sockaddr_in anybody, from;
    char buffer[MSG_SIZE];	// to store received messages or messages to be sent.
    int boolval = 1;			// for a socket option
+   char * broadcastAddress;
+   struct ifreq ifr;
 
    if (argc != 2)
    {
@@ -58,6 +63,15 @@ int main(int argc, char *argv[])
 	//  if (bind(sock, (struct sockaddr *)&anybody, length) < 0)
 	//  	error("binding");
 
+	// Get RPi's IP Address
+    ifr.ifr_addr.sa_family = AF_INET;
+    strncpy(ifr.ifr_name, "wlan0", IFNAMSIZ-1);
+    ioctl(sock, SIOCGIFADDR, &ifr);
+
+    broadcastAddress = inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
+
+    printf("Address: %s\n", broadcastAddress);
+
 
   do
   {
@@ -67,7 +81,7 @@ int main(int argc, char *argv[])
 	  fgets(buffer,MSG_SIZE-1,stdin); // MSG_SIZE-1 because a null character is added
 
 
-	  anybody.sin_addr.s_addr =  inet_addr("10.14.1.255"); 
+	  anybody.sin_addr.s_addr =  inet_addr(broadcastAddress); 
 	  
 	  if (buffer[0] != '!')
 	  {
