@@ -31,7 +31,8 @@ int main(int argc, char *argv[])
    struct sockaddr_in server;
    struct sockaddr_in addr;
    char buffer[MSG_SIZE];	// to store received messages or messages to be sent.
-   char broadcastAddress[20];
+   char broadcastAddress[20] = "128.206.23.255";
+   char ipAddress[20];
    struct ifreq ifr;
 
    if (argc < 2)
@@ -67,9 +68,9 @@ int main(int argc, char *argv[])
     strncpy(ifr.ifr_name, "wlan0", IFNAMSIZ-1);
     ioctl(sock, SIOCGIFADDR, &ifr);
 
-    strncpy(broadcastAddress, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr), 14);
+    strncpy(ipAddress, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr), 14);
 
-    printf("Address: %s\n", broadcastAddress);
+    printf("Address: %s\n", ipAddress);
 
 
     // Sending message strings
@@ -77,8 +78,8 @@ int main(int argc, char *argv[])
    char masterMessage[40] = "Connor on 128.206.22.103 is the master\n";
 
    // Copy IP address into messages
-   strncpy(sMessage + 2, broadcastAddress, 14);
-   strncpy(masterMessage + 10, broadcastAddress, 14);
+   strncpy(sMessage + 2, ipAddress, 14);
+   strncpy(masterMessage + 10, ipAddress, 14);
 
    int masterFlag = 0;
    int i, myVote, myIdx;

@@ -32,7 +32,8 @@ int main(int argc, char *argv[])
    struct sockaddr_in anybody, from;
    char buffer[MSG_SIZE];	// to store received messages or messages to be sent.
    int boolval = 1;			// for a socket option
-   char * broadcastAddress;
+   char broadcastAddress[20] = "128.206.23.255";
+   char *ipAddress;
    struct ifreq ifr;
 
    if (argc != 2)
@@ -68,9 +69,9 @@ int main(int argc, char *argv[])
     strncpy(ifr.ifr_name, "wlan0", IFNAMSIZ-1);
     ioctl(sock, SIOCGIFADDR, &ifr);
 
-    broadcastAddress = inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
+    ipAddress = inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
 
-    printf("Address: %s\n", broadcastAddress);
+    printf("Address: %s\n", ipAddress);
 
 
   do
