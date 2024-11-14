@@ -1,9 +1,3 @@
-/* 	Name        : 	client_udp_broadcast.c
-	Authors     : 	Luis A. Rivera 
-	Modified By : 	Ramy Farag
-	Description: 	Simple client (broadcast)
-	Course:			ECE4220/7220		*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
