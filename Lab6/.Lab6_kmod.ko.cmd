@@ -1,0 +1,1 @@
+cmd_/home/pi/ECE4220/Lab6/Lab6_kmod.ko := ld -r -EL -T ./scripts/module-common.lds -T ./arch/arm/kernel/module.lds  --build-id  -o /home/pi/ECE4220/Lab6/Lab6_kmod.ko /home/pi/ECE4220/Lab6/Lab6_kmod.o /home/pi/ECE4220/Lab6/Lab6_kmod.mod.o ;  true

@@ -53,7 +53,15 @@ int flag=0;
 int state = 0;
  
 static int major; 
-static char msg[MSG_SIZE];
+static char msg_r[MSG_SIZE];
+static char msg_w[MSG_SIZE];
+
+static int button_1_irqNumber;
+static int button_2_irqNumber;
+static int button_3_irqNumber;
+static int button_4_irqNumber;
+static int button_5_irqNumber;
+
 
 // Function called when the user space program reads the character device.
 // Some arguments not used here.
@@ -63,10 +71,10 @@ static char msg[MSG_SIZE];
 static ssize_t device_read(struct file *filp, char __user *buffer, size_t length, loff_t *offset)
 {
 	// Whatever is in msg will be placed into buffer, which will be copied into user space
-	ssize_t dummy = copy_to_user(buffer, msg, length);	// dummy will be 0 if successful
+	ssize_t dummy = copy_to_user(buffer, msg_r, length);	// dummy will be 0 if successful
 
 	// msg should be protected (e.g. semaphore). Not implemented here, but you can add it.
-	msg[0] = '\0';	// "Clear" the message, in case the device is read again.
+	msg_r[0] = '\0';	// "Clear" the message, in case the device is read again.
 					// This way, the same message will not be read twice.
 					// Also convenient for checking if there is nothing new, in user space.
 	
@@ -89,17 +97,17 @@ static ssize_t device_write(struct file *filp, const char __user *buff, size_t l
 		return -EINVAL;
 	
 	// unsigned long copy_from_user(void *to, const void __user *from, unsigned long n);
-	dummy = copy_from_user(msg, buff, len);	// Transfers the data from user space to kernel space
+	dummy = copy_from_user(msg_w, buff, len);	// Transfers the data from user space to kernel space
 	if(len == MSG_SIZE)
-		msg[len-1] = '\0';	// will ignore the last character received.
+		msg_w[len-1] = '\0';	// will ignore the last character received.
 	else
-		msg[len] = '\0';
+		msg_w[len] = '\0';
 	
 	// You may want to remove the following printk in your final version.
-	printk("Message from user space: %s\n", msg);
+	printk("Message from user space: %s\n", msg_w);
 
 	// Set timer period here
-	note = msg[0]; // Assume first character is the note
+	note = msg_w[0]; // Assume first char is the note
 
 	if(note == 'A'){
 		timer_interval_ns = 2272727; // A5
@@ -163,23 +171,23 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer_for_restart)
 }
 
 //Interrupt handler for InputPin. This will be called whenever there is a raising edge detected.
-static irqreturn_t gpio_irq_handler(int irq,void *dev_id)
+static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
 {
   	// Send character to character device based on irq
 	if(irq == gpio_to_irq(BUTTON_1)){
-		timer_interval_ns = 3401360; // D4
+		msg_r[0] = 'A';
 	}
 	else if(irq == gpio_to_irq(BUTTON_2)){
-		timer_interval_ns = 2865329; // F4
+		msg_r[0] = 'B';
 	}
 	else if(irq == gpio_to_irq(BUTTON_3)){
-		timer_interval_ns = 2272727; // A4
+		msg_r[0] = 'C';
 	}
 	else if(irq == gpio_to_irq(BUTTON_4)){
-		timer_interval_ns = 2024291; // B4
+		msg_r[0] = 'D';
 	}
 	else if(irq == gpio_to_irq(BUTTON_5)){
-		timer_interval_ns = 851063; // D5
+		msg_r[0] = 'E';
 	}
 	
 	printk(KERN_INFO "Interrupt on IRQ %i", irq);
@@ -239,11 +247,11 @@ int timer_init(void)
 
  	// Request the interrupt / attach handler
 	//Get the IRQ number for our GPIO
-	int button_1_irqNumber = gpio_to_irq(BUTTON_1);
-	int button_2_irqNumber = gpio_to_irq(BUTTON_2);
-	int button_3_irqNumber = gpio_to_irq(BUTTON_3);
-	int button_4_irqNumber = gpio_to_irq(BUTTON_4);
-	int button_5_irqNumber = gpio_to_irq(BUTTON_5);
+	button_1_irqNumber = gpio_to_irq(BUTTON_1);
+	button_2_irqNumber = gpio_to_irq(BUTTON_2);
+	button_3_irqNumber = gpio_to_irq(BUTTON_3);
+	button_4_irqNumber = gpio_to_irq(BUTTON_4);
+	button_5_irqNumber = gpio_to_irq(BUTTON_5);
 
  	//Enable (Async) Rising Edge detection
 	if (request_irq(button_1_irqNumber,(void *)gpio_irq_handler, IRQF_TRIGGER_RISING,"Button Interrupt", NULL)) {
@@ -267,6 +275,7 @@ int timer_init(void)
 		gpio_free(BUTTON_5);
 	}
 
+	printk(KERN_INFO "Interrupts Completed");
 
    //Timer initialization 
 
@@ -297,6 +306,13 @@ void timer_exit(void)
 	
 	//FREE PIN 6
 	gpio_free(GPIO_OUT6);
+
+	//FREE Interrupts
+	free_irq(button_1_irqNumber, "Button Interrupt");
+	free_irq(button_2_irqNumber, "Button Interrupt");
+	free_irq(button_3_irqNumber, "Button Interrupt");
+	free_irq(button_4_irqNumber, "Button Interrupt");
+	free_irq(button_5_irqNumber, "Button Interrupt");
 
 	//FREE Buttons
 	gpio_free(BUTTON_1);

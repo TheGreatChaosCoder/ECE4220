@@ -25,11 +25,71 @@
 #define CHAR_DEV "/dev/Lab6" // "/dev/YourDevName"
 #define MSG_SIZE 40
 
+// Sending message strings
+char sMessage[40] = "# 128.206.22.108   \n";
+char masterMessage[40] = "Connor is the master\n";
+
+int masterFlag = 0;
+int i, myVote, myIdx;
+int recentVotes[20] = {0};
+
+int cdev_id;
+
+/* Callback called when the client receives a message. */
+void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg)
+{
+	/* This blindly prints the payload, but the payload can be anything so take care. */
+	printf("%s %d %s\n", msg->topic, msg->qos, (char *)msg->payload);
+	char * buffer = msg->payload;
+	printf("Received a datagram. It says: %s ", buffer);
+
+    if ((buffer[15] != sMessage[15]))
+    {
+        if(0 == strcmp(buffer, "WHOIS\n"))
+        {   
+            if(masterFlag != 0){
+                mosquitto_publish(mosq, NULL, "Election", sizeof(masterMessage),
+								  masterMessage, 0, false);
+                printf("Sending a datagram. It says: %s", masterMessage);
+            }
+        }
+        else if(0 == strcmp(buffer, "VOTE\n"))
+        {
+            sMessage[17] = '0' + (rand()%10 + 1);
+            recentVotes[(sMessage[14]-'0')*10 + (sMessage[15]-'0')] = sMessage[17] - '0';
+
+			masterFlag = 1;
+            myIdx = (sMessage[14]-'0')*10 + (sMessage[15]-'0');
+            myVote = recentVotes[myIdx];
+
+            for(i = 0; i<20; i++){
+                //printf("Vote %i: %i\n", i, recentVotes[i]);
+                if(i == myIdx){
+                    continue; // Don't compare with myself
+                }
+
+                if(recentVotes[i] > myVote || (recentVotes[i] == myVote && i > myIdx)) {
+                   masterFlag = 0; // Lost vote, give up
+                    break;
+                }
+            }
+
+            printf("Master Flag: %i\n", masterFlag); 
+
+        }
+		else if(buffer[0] == '@'){
+			if(masterFlag != 1){
+				write(cdev_id, buffer+1, sizeof(buffer[1]));
+			}
+		}
+    }
+}
+
 int main(void)
 {
 	int rc;
 	struct mosquitto * mosq;
-	int cdev_id, dummy;
+	int dummy;
 	char buffer[MSG_SIZE];
 	
 	// Open the Character Device for writing
@@ -52,6 +112,18 @@ int main(void)
 		exit(1);
 	}
 	printf("We are now connected to the broker!\n");
+
+	// Subscribe to Broker
+	rc = mosquitto_subscribe(mosq, NULL, "Election", 1);
+	
+	if(rc != MOSQ_ERR_SUCCESS){
+		fprintf(stderr, "Error subscribing: %s\n", mosquitto_strerror(rc));
+		/* We might as well disconnect if we were unable to subscribe */
+		mosquitto_disconnect(mosq);
+	}
+
+	// Set message callback
+	mosquitto_message_callback_set(mosq, on_message);
 
 	while(1)
 	{
