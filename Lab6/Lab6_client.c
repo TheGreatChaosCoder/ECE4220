@@ -61,6 +61,9 @@ int main(void)
 						// One must be careful about message sizes on both sides.
 		if(buffer[0] == '!')	// If the first character is '!', get out
 			break;
+
+		// Publish to Election topic
+		mosquitto_publish(mosq, NULL, "Election", sizeof(buffer),buffer, 0, false);
 		
 		dummy = write(cdev_id, buffer, sizeof(buffer));
 		if(dummy != sizeof(buffer)) {
